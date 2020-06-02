@@ -1,0 +1,133 @@
+@import "tailwindcss/base";
+
+@import "tailwindcss/components";
+
+@import "tailwindcss/utilities";
+
+
+html {
+    height: 100%;
+}
+
+body {
+    font-family: 'Manrope';
+    background: #ffffff;
+    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', endColorstr='#ffffff',GradientType=1 );
+    background-repeat: no-repeat;
+    background-position: center center;
+    -webkit-background-size: cover;
+    -moz-background-size: cover;
+    -o-background-size: cover;
+    background-size: auto 100%;
+}
+
+svg {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+     -khtml-user-select: none;
+       -moz-user-select: none;
+        -ms-user-select: none;
+            user-select: none;
+}
+
+.text-2xs {
+    font-size: 0.65rem;
+}
+
+.stripe-from-left {
+    background-attachment: fixed;
+    background-image: -moz-linear-gradient(27deg,  #ffffff 30%, #6b46c1 30%, #6b46c1 35%, #805ad5 35%, #805ad5 40%, #9f7aea 40%, #9f7aea 45%, #ffffff 45%);
+    background-image: -webkit-linear-gradient(27deg,  #ffffff 30%, #6b46c1 30%, #6b46c1 35%, #805ad5 35%, #805ad5 40%, #9f7aea 40%, #9f7aea 45%, #ffffff 45%);
+    background-image: linear-gradient(27deg,  #ffffff 30%, #6b46c1 30%, #6b46c1 35%, #805ad5 35%, #805ad5 40%, #9f7aea 40%, #9f7aea 45%, #ffffff 45%);
+}
+
+.stripe-from-right {
+    background-attachment: fixed;
+    background-image: -moz-linear-gradient(155deg, #ffffff 75%, #6b46c1 75%, #6b46c1 80%, #805ad5 80%, #805ad5 85%, #9f7aea 85%, #9f7aea 90%, #ffffff 90%);
+    background-image: -webkit-linear-gradient(155deg, #ffffff 75%, #6b46c1 75%, #6b46c1 80%, #805ad5 80%, #805ad5 85%, #9f7aea 85%, #9f7aea 90%, #ffffff 90%);
+    background-image: linear-gradient(155deg, #ffffff 75%, #6b46c1 75%, #6b46c1 80%, #805ad5 80%, #805ad5 85%, #9f7aea 85%, #9f7aea 90%, #ffffff 90%);
+
+}
+
+.dashboard-table-header {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+@media (max-width: 1240px){
+    .dash-table {
+        display: none !important;
+    }
+}
+
+.nr-button-success {
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+    width: 7.5rem;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 0.75rem;
+    background-color: #50b577;
+    font-weight: 700;
+    color: white;
+}
+.nr-button-error {
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+    width: 7.5rem;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 0.75rem;
+    background-color: #c4443b;
+    font-weight: 700;
+    color: white;
+}
+.nr-button-warning {
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+    width: 7.5rem;
+    margin-left: auto;
+    margin-right: auto;
+    border-radius: 0.75rem;
+    background-color: #EBC14A;
+    font-weight: 700;
+    color: white;    
+}
+
+@keyframes loadingColor {
+    from {
+        background-color: #cbd5e0;
+    }
+    to {
+        background-color: #a0aec0;
+    }
+  }
+
+.loading {
+    animation-duration: 0.5s;
+    animation-name: loadingColor;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+.table-header {
+    font-size: 18px;
+    width: 20%;
+    font-weight: 700;
+}
+
+.table-body {
+    width: 20%;
+    font-size: 14px;
+}
+
+.input-error {
+    box-shadow: 0px 0px 1px 1px red !important;
+}
+
+.input-instruction-text {
+    line-height: 0;
+    color: gray;
+    padding-top: 10px; 
+    font-size: 12px;
+}

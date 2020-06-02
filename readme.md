@@ -1,0 +1,1 @@
+To run: gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app -b unix:/tmp/uvicorn.sock
