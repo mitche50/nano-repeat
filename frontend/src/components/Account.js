@@ -92,6 +92,9 @@ export default class Account extends Component {
                                 {this.state.forwardAddress ? <a target="_blank" href={"https://nanocrawler.cc/explorer/account/" + this.state.forwardAddress} className="break-words"> <div className="inline"> {this.state.forwardAddress.substring(0, 5)} </div> <div className="inline font-bold" style={{color: "#2eb34c"}}>{this.state.forwardAddress.substring(5, 9)}</div> <div className="inline"> {this.state.forwardAddress.substring(9, this.state.forwardAddress.length - 5)}</div><div className="inline font-bold" style={{color: "#6b46c1"}}>{this.state.forwardAddress.substring(this.state.forwardAddress.length - 5, this.state.forwardAddress.length )}</div></a> : "" }
                             </div>
                         </div>
+                        <div className="flex flex-row flex-grow py-2">
+                            <p className="w-full"><Link to={"/changeaddress"} className="text-green-500 font-bold">Change Your Forwarding Address</Link></p>
+                        </div>
                     </div>
 
                 </div>

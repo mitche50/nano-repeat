@@ -18,7 +18,6 @@ export default class ChangePasswordForm extends React.Component{
         this.handleChange = this.handleChange.bind(this)
     }
     handleSubmit(e) {
-        console.log("token: " + this.props.token)
         var req_body = {
             "token": this.props.token,
             "new_password": this.state.new_password

@@ -28,6 +28,7 @@ from oauth2client import client
 from util.tortoise_models.token import Token
 from util.tortoise_models.update_subscription import UpdateSubscription
 from util.tortoise_models.verify_subscription import VerifySubscription
+from util.change_address import ChangeAddress
 from util.security import hash_password, verify_password, verify_access_token, create_access_token
 from util.nremail import send_confirm_email_template, send_forgot_password_template
 from nano.nano_utils import create_account
@@ -181,18 +182,15 @@ async def signup(body: SignUpForm):
                 status_code=status.HTTP_400_BAD_REQUEST
             )
         else:
-            print("reconfirming because user tried to sign up with an unconfirmed email more than once.")
             confirm_email_token = create_access_token(data={'email': body.email})
             await send_confirm_email_template(body.first_name, confirm_email_token, body.email)
             return JSONResponse(
                 status_code = status.HTTP_400_BAD_REQUEST, 
                 content={"error": "login exists but is unregistered - check email for registration"}
             )
-    print("past the check if the login was already created")
     new_user = await User(first_name=body.first_name, last_name=body.last_name)
     await new_user.save()
     if body.password == "":
-        print("creating a google login account")
         new_login = await new_user.create_login(email=body.email.lower(), password=body.password, email_confirmed=True)
     else:
         try:
@@ -693,4 +691,23 @@ async def verify_subscription(token: str, verify_subscription: VerifySubscriptio
             "expiration_date": str(subscription.expiration_date),
             "payment_address": subscription.payment_address
         }
+    )
+
+@app.post("/change_address")
+async def change_address(body: ChangeAddress):
+    """Change the user's forwarding address to the provided"""
+    login = await verify_token(body.token)
+    if type(login) is JSONResponse:
+        return login
+    user = await User.filter(id=login.user_id).first()
+    address_return = await user.set_forwarding_address(body.new_address)
+
+    if address_return is None:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"error":"The forwarding address you sent was improperly formatted, or matched your existing one."}
+        )
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={"new_address": body.new_address}
     )

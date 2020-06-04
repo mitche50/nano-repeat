@@ -15,6 +15,7 @@ import Subscriptions from "../Subscriptions"
 import Payments from "../Payments"
 import Account from "../Account"
 import Docs from "../Docs"
+import ChangeForwardingAddress from "../ChangeForwardingAddress";
 
 export default function Routes() {
   return (
@@ -31,6 +32,7 @@ export default function Routes() {
         <Route path="/confirm/:token" component={EmailConfirm} />
         <Route exact path="/forgotpassword" component={ForgotPassword} />
         <Route path="/changepw/:token" component={ChangePassword} />
+        <Route path="/changeaddress" component={ChangeForwardingAddress} />
         <Route exact path="/docs" component={Docs} />
         <Route exact path="/" component={Splash} />
         <Route>

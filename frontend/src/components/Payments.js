@@ -90,7 +90,7 @@ export default class Payments extends Component {
                             {this.state.loading ? this.state.loadingArray : 
                                 this.state.subscriptionArray.length === 0 ? 
                                 <div className="px-2 flex flex-grow flex-col " style={{height: "20rem"}}>
-                                    <div className="pt-8 text-lg md:text-2xl lg:text-2xl xl:text-2xl">You don't have any subscriptions yet ... Go get some users!</div>
+                                    <div className="pt-8 text-lg md:text-2xl lg:text-2xl xl:text-2xl">No one has paid you yet ...</div>
                                 </div> : 
                                 this.state.subscriptionArray}
                         </div>

@@ -16,3 +16,5 @@ bitstring
 oauth2client
 google-auth
 sendgrid
+itsdangerous
+
