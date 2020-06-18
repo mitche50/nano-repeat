@@ -25,6 +25,8 @@ from db.models.forwardingaddress import ForwardingAddress
 from db.db_config import DBConfig
 from nano.nano_utils import send
 
+import paho.mqtt.client as mqtt
+
 
 class Payment_Monitor(object):
     def __init__(self):
@@ -42,6 +44,7 @@ class Payment_Monitor(object):
         self.subscription = asyncio.ensure_future(self.subscribe_all())
         self.convert_multiplier = Decimal(os.getenv('CONVERT_MULTIPLIER'))
         self.queue = asyncio.Queue(maxsize=0)
+        self.mqtt = mqtt.Client()
 
         self.logger.setLevel(logging.INFO)
         handler = TimedRotatingFileHandler('{}/logs/{:%Y-%m-%d}-payment.log'.format(os.getcwd(), datetime.now()),
@@ -68,6 +71,17 @@ class Payment_Monitor(object):
         account_list_return = r.json()
         return account_list_return['accounts']
 
+    
+    def send_mqtt_message(self, topic: str, payload: object):
+        """Publish message on provided topic"""
+        payload = json.dumps(payload)
+        self.mqtt.username_pw_set(os.getenv('MQTT_ADMIN_LOGIN'), os.getenv('MQTT_ADMIN_PW'))
+        self.mqtt.connect(os.getenv('MQTT_HOST'), int(os.getenv('MQTT_PORT')))
+        self.mqtt.loop_start()
+        infot = self.mqtt.publish("test", payload)
+        self.mqtt.wait_for_publish()
+        self.mqtt.disconnect()
+
 
     async def validate_amount(self, subscription, amount):
         """Validate the amount paid is the correct amount"""
@@ -88,6 +102,7 @@ class Payment_Monitor(object):
                 tx_hash=tx_hash
             )
             await transaction.save()
+            # TODO: Get subscription ID for address
             return True
         except Exception:
             return False
@@ -104,7 +119,7 @@ class Payment_Monitor(object):
                 send_info['forward_address'] = None
                 send_info['forward_amount'] = "0"
             else:
-                end_info['return_amount'] = "0"
+                send_info['return_amount'] = "0"
                 send_info['return_address'] = None
                 send_info['forward_address'] = None
                 send_info['forward_amount'] = "0"
@@ -129,7 +144,7 @@ class Payment_Monitor(object):
         try:
             accounts = self.get_accounts()
         except Exception as e:
-            self.logger.info("error: ", e)
+            self.logger.info(f"error: {e}")
         try:
             self.logger.info("Subscribing to accounts: {}".format(accounts))
         except Exception as e:
@@ -158,6 +173,8 @@ class Payment_Monitor(object):
                         send_hash = message['hash']
                         validity = await self.validate_amount(subscription, amount)
                         send_info = await self.set_send_info(validity, amount, message['account'], subscription.merchant_id, subscription.cost)
+                        # TODO: Send message to MQTT on topic '{subscription.merchant_id}/{subscription.subscriber_id}'
+                        self.send_mqtt_message("test", {"receiver":receiver, "amount":amount, "hash":send_hash, "subscription":subscription})
                         send_info['source'] = message['block']['link_as_account']
                         log_info = {
                             "amount":amount,
@@ -184,7 +201,7 @@ class Payment_Monitor(object):
                             destination=send_info['forward_address'],
                             amount=send_info['forward_amount']
                         )
-                        self.logger.info("forward return: ", forward_return)
+                        self.logger.info(f"forward return: {forward_return}")
                     if send_info['return_address'] is not None:
                         self.logger.info(f"forwarding {send_info['return_amount']} nano")
                         refund_return = await send(
@@ -192,7 +209,7 @@ class Payment_Monitor(object):
                             destination=send_info['return_address'],
                             amount=send_info['return_amount']
                         )
-                        self.logger.info("refund return: ", refund_return)
+                        self.logger.info(f"refund return: {refund_return}")
 
                 elif message['type'] == 'log':
                     log_info = message['log_info']
