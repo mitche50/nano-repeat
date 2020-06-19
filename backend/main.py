@@ -1,42 +1,46 @@
-import os
+import asyncio
 import json
 import logging
-import asyncio
-
-from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException, status, Body, Response
-from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from starlette.requests import Request
+import os
+from datetime import datetime, timedelta
 from logging.handlers import TimedRotatingFileHandler
 from typing import List
+
+from dotenv import load_dotenv
+from fastapi import Body, Depends, FastAPI, HTTPException, Response, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from google.auth.transport import requests
+from google.oauth2 import id_token
+from starlette.requests import Request
+from tortoise import Tortoise, run_async
+
 from db.db_config import DBConfig
-from db.models.user import User_Pydantic, User
-from db.models.login import Login_Pydantic, Login
 from db.models.forwardingaddress import ForwardingAddress
-from db.models.transactions import Transactions_Pydantic, Transactions
-from db.models.subscriptions import Subscriptions_Pydantic, Subscriptions, SubscriptionId_Pydantic, SubscriptionsIn_Pydantic
-from util.signupform import SignUpForm
-from util.loginform import LoginForm
-from util.forgotpasswordform import ForgotPasswordForm
+from db.models.login import Login, Login_Pydantic
+from db.models.subscriptions import (SubscriptionId_Pydantic, Subscriptions,
+                                     Subscriptions_Pydantic,
+                                     SubscriptionsIn_Pydantic)
+from db.models.transactions import Transactions, Transactions_Pydantic
+from db.models.user import User, User_Pydantic
+from nano.nano_utils import create_account
+from nano.payment_monitor import Payment_Monitor
+from oauth2client import client
+from util.change_address import ChangeAddress
 from util.changepasswordform import ChangePasswordForm
 from util.confirmtokenmodel import ConfirmTokenModel
-from google.oauth2 import id_token
-from google.auth.transport import requests
-from oauth2client import client
+from util.forgotpasswordform import ForgotPasswordForm
+from util.loginform import LoginForm
+from util.nremail import (send_confirm_email_template,
+                          send_forgot_password_template)
+from util.security import (create_access_token, hash_password,
+                           verify_access_token, verify_password)
+from util.signupform import SignUpForm
 from util.tortoise_models.token import Token
 from util.tortoise_models.update_subscription import UpdateSubscription
 from util.tortoise_models.verify_subscription import VerifySubscription
-from util.change_address import ChangeAddress
-from util.security import hash_password, verify_password, verify_access_token, create_access_token
-from util.nremail import send_confirm_email_template, send_forgot_password_template
-from nano.nano_utils import create_account
-from nano.payment_monitor import Payment_Monitor
 from util.validation import validate_email
-from tortoise import run_async, Tortoise
-from datetime import datetime, timedelta
-
 
 # Load the .env file into environment variables
 load_dotenv()
@@ -57,7 +61,8 @@ handler = TimedRotatingFileHandler('{}/logs/{:%Y-%m-%d}-nr.log'.format(os.getcwd
 logger.addHandler(handler)
 
 # Payment Monitor
-pm = Payment_Monitor()
+queue = asyncio.Queue(maxsize=0)
+pm = Payment_Monitor(queue)
 
 # CORS management
 ENV = os.getenv("ENV")
@@ -82,13 +87,14 @@ else:
         allow_headers=["*"],
     )
 
+EXAMPLE_USER_ID = os.getenv('EXAMPLE_USER_ID')
+
 @app.on_event("startup")
 async def startup():
     """Run startup configurations"""
     logger.info("Subscribing")
     await DBConfig().init_package_db()
     try:
-        asyncio.ensure_future(pm.subscribe_all())
         asyncio.ensure_future(pm.queue_consumer())
     except Exception as e:
         logger.info(e)
@@ -105,11 +111,11 @@ async def get_current_login(email: str):
             content={"error":"Incorrect username or password"},
             headers={"WWW-Authenticate": "Bearer"},
         )
-    login_return = {
-        "user_id": current_login.user_id,
-        "email": current_login.email,
-        "email_confirmed": current_login.email_confirmed
-    }
+    # login_return = {
+    #     "user_id": current_login.user_id,
+    #     "email": current_login.email,
+    #     "email_confirmed": current_login.email_confirmed
+    # }
     return current_login
 
 
@@ -344,7 +350,11 @@ async def verify_token(access_token: str):
     username = verify_access_token(access_token)
     if username:
         return await get_current_login(username)
-    return None
+    return JSONResponse(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        content={"error":"Incorrect username or password"},
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 @app.get('/me')
@@ -451,7 +461,7 @@ async def read_subscriptions(token: str):
 
 
 @app.get('/subscriptions/address')
-async def read_subscriptions(token: str, payment_address: str):
+async def read_subscriptions_address(token: str, payment_address: str):
     """Return the subscription associated with the payment address provided"""
     login = await verify_token(token)
     if type(login) is JSONResponse:
@@ -485,10 +495,11 @@ async def read_subscriptions(token: str, payment_address: str):
 @app.get('/subscriptions/customer')
 async def read_customer_subscription(token: str, subscriber_id: str):
     """Returns a list of subscriptions for a provided customer ID"""
+    if token == "example":
+        token = EXAMPLE_USER_ID
     login = await verify_token(token)
     if type(login) is JSONResponse:
         return login
-
     subscription_list = await Subscriptions.filter(subscriber_id=subscriber_id, merchant_id=login.user_id).all()
 
     if subscription_list is None:
