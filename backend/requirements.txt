@@ -17,4 +17,5 @@ oauth2client
 google-auth
 sendgrid
 itsdangerous
+paho-mqtt
 

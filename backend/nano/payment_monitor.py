@@ -7,6 +7,7 @@ import rapidjson
 import redis
 import requests
 import websockets
+import json
 
 import os
 import sys
@@ -29,7 +30,7 @@ import paho.mqtt.client as mqtt
 
 
 class Payment_Monitor(object):
-    def __init__(self):
+    def __init__(self, queue: asyncio.Queue):
         load_dotenv()
 
         self.logger = logging.getLogger('payment_log')
@@ -43,7 +44,7 @@ class Payment_Monitor(object):
         self.pippin_ip = os.getenv('PIPPIN_IP')
         self.subscription = asyncio.ensure_future(self.subscribe_all())
         self.convert_multiplier = Decimal(os.getenv('CONVERT_MULTIPLIER'))
-        self.queue = asyncio.Queue(maxsize=0)
+        self.queue = queue
         self.mqtt = mqtt.Client()
 
         self.logger.setLevel(logging.INFO)
@@ -78,8 +79,8 @@ class Payment_Monitor(object):
         self.mqtt.username_pw_set(os.getenv('MQTT_ADMIN_LOGIN'), os.getenv('MQTT_ADMIN_PW'))
         self.mqtt.connect(os.getenv('MQTT_HOST'), int(os.getenv('MQTT_PORT')))
         self.mqtt.loop_start()
-        infot = self.mqtt.publish("test", payload)
-        self.mqtt.wait_for_publish()
+        infot = self.mqtt.publish(topic, payload)
+        infot.wait_for_publish()
         self.mqtt.disconnect()
 
 
@@ -173,8 +174,6 @@ class Payment_Monitor(object):
                         send_hash = message['hash']
                         validity = await self.validate_amount(subscription, amount)
                         send_info = await self.set_send_info(validity, amount, message['account'], subscription.merchant_id, subscription.cost)
-                        # TODO: Send message to MQTT on topic '{subscription.merchant_id}/{subscription.subscriber_id}'
-                        self.send_mqtt_message("test", {"receiver":receiver, "amount":amount, "hash":send_hash, "subscription":subscription})
                         send_info['source'] = message['block']['link_as_account']
                         log_info = {
                             "amount":amount,
@@ -184,7 +183,7 @@ class Payment_Monitor(object):
                             "subscription":subscription
                         }
                         await queue.put({"type":"log", "log_info":log_info, "send_info":send_info})
-
+                        
 
     async def queue_consumer(self):
         """Worker to digest the queue and send transactions"""
@@ -202,6 +201,13 @@ class Payment_Monitor(object):
                             amount=send_info['forward_amount']
                         )
                         self.logger.info(f"forward return: {forward_return}")
+                        try:
+                            subscription = message['log_info']['subscription']
+                            self.logger.info(f"merchant ID: {subscription.merchant_id}")
+                            self.logger.info(f"subscriber ID: {subscription.subscriber_id}")
+                            self.send_mqtt_message(f"{subscription.merchant_id}", {"subscriber_id":subscription.subscriber_id, "status": "active"})
+                        except Exception as e:
+                            self.logger.info(f"error: {e}")
                     if send_info['return_address'] is not None:
                         self.logger.info(f"forwarding {send_info['return_amount']} nano")
                         refund_return = await send(
