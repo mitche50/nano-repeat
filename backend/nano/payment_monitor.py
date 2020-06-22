@@ -26,7 +26,7 @@ from db.models.forwardingaddress import ForwardingAddress
 from db.db_config import DBConfig
 from nano.nano_utils import send
 
-import paho.mqtt.client as mqtt
+import paho.mqtt.publish as publish
 
 
 class Payment_Monitor(object):
@@ -45,7 +45,6 @@ class Payment_Monitor(object):
         self.subscription = asyncio.ensure_future(self.subscribe_all())
         self.convert_multiplier = Decimal(os.getenv('CONVERT_MULTIPLIER'))
         self.queue = queue
-        self.mqtt = mqtt.Client()
 
         self.logger.setLevel(logging.INFO)
         handler = TimedRotatingFileHandler('{}/logs/{:%Y-%m-%d}-payment.log'.format(os.getcwd(), datetime.now()),
@@ -76,12 +75,15 @@ class Payment_Monitor(object):
     def send_mqtt_message(self, topic: str, payload: object):
         """Publish message on provided topic"""
         payload = json.dumps(payload)
-        self.mqtt.username_pw_set(os.getenv('MQTT_ADMIN_LOGIN'), os.getenv('MQTT_ADMIN_PW'))
-        self.mqtt.connect(os.getenv('MQTT_HOST'), int(os.getenv('MQTT_PORT')))
-        self.mqtt.loop_start()
-        infot = self.mqtt.publish(topic, payload)
-        infot.wait_for_publish()
-        self.mqtt.disconnect()
+        publish.single(
+            topic, 
+            payload, 
+            hostname=os.getenv('MQTT_HOST'), 
+            port=int(os.getenv('MQTT_PORT')), 
+            auth={
+                'username':os.getenv('MQTT_ADMIN_LOGIN'),
+                'password':os.getenv('MQTT_ADMIN_PW')
+            })        
 
 
     async def validate_amount(self, subscription, amount):
@@ -203,8 +205,6 @@ class Payment_Monitor(object):
                         self.logger.info(f"forward return: {forward_return}")
                         try:
                             subscription = message['log_info']['subscription']
-                            self.logger.info(f"merchant ID: {subscription.merchant_id}")
-                            self.logger.info(f"subscriber ID: {subscription.subscriber_id}")
                             self.send_mqtt_message(f"{subscription.merchant_id}", {"subscriber_id":subscription.subscriber_id, "status": "active"})
                         except Exception as e:
                             self.logger.info(f"error: {e}")
