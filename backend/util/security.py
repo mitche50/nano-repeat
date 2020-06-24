@@ -40,6 +40,8 @@ def create_access_token(data, override_expire: int = None):
         expire = datetime.utcnow() + timedelta(minutes=override_expire)
         to_encode.update({"exp": expire})
     
+    to_encode['nonce'] = str(hashlib.sha256(os.urandom(60)).hexdigest().encode('ascii'))
+
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
