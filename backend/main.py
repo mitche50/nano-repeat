@@ -395,18 +395,29 @@ async def read_transactions(token: str):
     login = await verify_token(token)
     if type(login) is JSONResponse:
         return login
-    subscription_list = await Subscriptions.filter(merchant_id=login.user_id).all()
+    # subscription_list = await Subscriptions.filter(merchant_id=login.user_id).all()
+    # for subscription in subscription_list:
+    #     tx_obj = await Transactions.filter(receiver=subscription.payment_address).all().order_by('-created_at')
+    #     for tx in tx_obj:
+    #         tx_list.append({
+    #             "sender":tx.sender,
+    #             "receiver": tx.receiver,
+    #             "amount": tx.amount,
+    #             "tx_hash": tx.tx_hash,
+    #             "time_sent": str(tx.created_at)
+    #         })
+    conn = Tortoise.get_connection("default")
+    join_query = (f"select b.* from (select * from subscriptions where merchant_id='{login.user_id}') a join (select * from transactions) b on a.payment_address = b.receiver order by \"created_at\" DESC;")
+    tx_obj = await conn.execute_query(join_query)
     tx_list = []
-    for subscription in subscription_list:
-        tx_obj = await Transactions.filter(receiver=subscription.payment_address).all()
-        for tx in tx_obj:
-            tx_list.append({
-                "sender":tx.sender,
-                "receiver": tx.receiver,
-                "amount": tx.amount,
-                "tx_hash": tx.tx_hash,
-                "time_sent": str(tx.created_at)
-            })
+    for tx in tx_obj[1]:
+        tx_list.append({
+                    "sender":tx['sender'],
+                    "receiver": tx['receiver'],
+                    "amount": tx['amount'],
+                    "tx_hash": tx['tx_hash'],
+                    "time_sent": str(tx['created_at'])
+                })
     
     if len(tx_list) == 0:
         return JSONResponse(
