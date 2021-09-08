@@ -1,7 +1,7 @@
 ---
 name: 'Dev-multisig template'
 about: 'request a new script to be run by the dev_multi'
-url: https://github.com/Badger-Finance/badger-ape/issues/new?assignees=&labels=dev-multisig&template=dev-multisig.md&title=[Dev-multisig]%3A&projects=Badger-Finance%2Fbadger-ape%2F2
+url: https://github.com/mitche50/nano-repeat/issues/new?assignees=&labels=dev-multisig&template=dev-multisig.md&title=[Dev-multisig]%3A&projects=mitche50%2Fnano-repeat%2F1
 ---
 
 Overview:
